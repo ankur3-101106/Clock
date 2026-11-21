@@ -360,10 +360,10 @@ function updateStopwatch() {
   let hrs = Math.floor(totalSeconds / 3600);
   let mins = Math.floor((totalSeconds % 3600) / 60);
   let secs = totalSeconds % 60;
-  let hundredths = Math.floor((stopwatchMilliseconds % 1000) / 10);
+  let ms = Math.floor(stopwatchMilliseconds % 1000);
   const display = document.getElementById('stopwatchDisplay');
   if (display) {
-    const str = `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(hundredths, 2)}`;
+    const str = `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(ms, 3)}`;
     setFixedDigits(display, str);
   }
 }
@@ -376,7 +376,7 @@ function startStopwatch() {
       stopwatchMilliseconds += (now - lastUpdate);
       lastUpdate = now;
       updateStopwatch();
-    }, 25);
+    }, 10);
     const startBtn = document.getElementById('startStopwatchBtn');
     if (startBtn) startBtn.textContent = 'Running...';
   }
@@ -398,7 +398,7 @@ function resetStopwatch() {
   lastLapMilliseconds = 0;
   const display = document.getElementById('stopwatchDisplay');
   if (display) {
-    setFixedDigits(display, '00:00:00.00');
+    setFixedDigits(display, '00:00:00.000');
   }
   const lapsContainer = document.getElementById('stopwatchLaps');
   if (lapsContainer) lapsContainer.innerHTML = '';
@@ -416,8 +416,8 @@ function lapStopwatch() {
   const splitSecs = Math.floor(splitMs / 1000);
   const sMins = Math.floor(splitSecs / 60);
   const sSecs = splitSecs % 60;
-  const sHundredths = Math.floor((splitMs % 1000) / 10);
-  const splitDisplay = `+${pad(sMins)}:${pad(sSecs)}.${pad(sHundredths, 2)}`;
+  const sMs = Math.floor(splitMs % 1000);
+  const splitDisplay = `+${pad(sMins)}:${pad(sSecs)}.${pad(sMs, 3)}`;
 
   const lapEl = document.createElement('div');
   lapEl.className = 'lap-item';
@@ -440,11 +440,12 @@ let lastTimerDisplayString = '';
 
 function formatTimer(ms) {
   if (ms < 0) ms = 0;
-  let totalSeconds = Math.ceil(ms / 1000);
+  let totalSeconds = Math.floor(ms / 1000);
   let hrs = Math.floor(totalSeconds / 3600);
   let mins = Math.floor((totalSeconds % 3600) / 60);
   let secs = totalSeconds % 60;
-  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  let millis = Math.floor(ms % 1000);
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(millis, 3)}`;
 }
 
 function updateTimerDisplay() {
@@ -523,7 +524,7 @@ function startTimer() {
     } else {
       updateTimerDisplay();
     }
-  }, 100);
+  }, 10);
 }
 
 function stopTimer() {

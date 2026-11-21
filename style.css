@@ -110,7 +110,7 @@ body {
 /* Digital Displays - Orbitron with fixed-space character slots */
 .digital-display {
   font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: clamp(2.2rem, 7.5vw, 5.5rem);
+  font-size: clamp(2rem, 6.8vw, 5rem);
   font-weight: 700;
   color: #61dafb;
   text-shadow: 0 0 20px rgba(97, 218, 251, 0.5);
@@ -124,29 +124,34 @@ body {
   white-space: nowrap;
 }
 
-/* Individual character slots rendered in fixed space */
+.stopwatch-font {
+  font-size: clamp(1.6rem, 5.2vw, 3.8rem);
+}
+
+/* Individual character slots rendered in fixed space with comfortable spacing */
 .time-char {
   display: inline-block;
   text-align: center;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  margin: 0 0.05em;
 }
 
 .time-digit {
-  width: 0.66em;
+  width: 0.82em;
 }
 
 .time-sep {
-  width: 0.32em;
+  width: 0.45em;
 }
 
 .time-space {
-  width: 0.35em;
+  width: 0.6em;
   white-space: pre;
 }
 
 .time-letter {
-  width: 0.72em;
+  width: 0.85em;
 }
 
 .stopwatch-font {
