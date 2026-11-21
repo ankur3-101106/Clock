@@ -82,27 +82,39 @@ function testSound() {
 
 // ---------------- LOCAL TIME ----------------
 let is24HourFormat = false;
+let lastLocalTimeString = '';
+let lastLocalDateString = '';
 
 function updateLocalTime() {
   const now = new Date();
-  const localEl = document.getElementById('localTime');
-  if (localEl) {
-    localEl.textContent = now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: !is24HourFormat
-    });
+  const timeString = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: !is24HourFormat
+  });
+
+  if (timeString !== lastLocalTimeString) {
+    lastLocalTimeString = timeString;
+    const localEl = document.getElementById('localTime');
+    if (localEl) {
+      localEl.textContent = timeString;
+    }
   }
 
-  const dateEl = document.getElementById('localDate');
-  if (dateEl) {
-    dateEl.textContent = now.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const dateString = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  if (dateString !== lastLocalDateString) {
+    lastLocalDateString = dateString;
+    const dateEl = document.getElementById('localDate');
+    if (dateEl) {
+      dateEl.textContent = dateString;
+    }
   }
 }
 
@@ -112,19 +124,28 @@ function toggleHourFormat() {
   if (btn) {
     btn.textContent = is24HourFormat ? "Switch to 12-Hour Format (AM/PM)" : "Switch to 24-Hour Format";
   }
+  lastLocalTimeString = '';
+  lastWorldTimeString = '';
   updateLocalTime();
   updateWorldTime();
 }
 
-// Immediately initialize local time (no 1-second blank flash)
+// Immediately initialize local time
 updateLocalTime();
-setInterval(updateLocalTime, 250);
+setInterval(updateLocalTime, 200);
 
 // ---------------- WORLD TIME ----------------
 const timezoneSelect = document.getElementById('timezoneSelect');
 if (timezoneSelect) {
-  timezoneSelect.addEventListener('change', updateWorldTime);
+  timezoneSelect.addEventListener('change', () => {
+    lastWorldTimeString = '';
+    lastWorldDateString = '';
+    updateWorldTime();
+  });
 }
+
+let lastWorldTimeString = '';
+let lastWorldDateString = '';
 
 function updateWorldTime() {
   const select = document.getElementById('timezoneSelect');
@@ -133,26 +154,36 @@ function updateWorldTime() {
   const now = new Date();
 
   try {
-    const worldTimeEl = document.getElementById('worldTime');
-    if (worldTimeEl) {
-      worldTimeEl.textContent = now.toLocaleTimeString('en-US', {
-        timeZone: tz,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: !is24HourFormat
-      });
+    const timeString = now.toLocaleTimeString('en-US', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: !is24HourFormat
+    });
+
+    if (timeString !== lastWorldTimeString) {
+      lastWorldTimeString = timeString;
+      const worldTimeEl = document.getElementById('worldTime');
+      if (worldTimeEl) {
+        worldTimeEl.textContent = timeString;
+      }
     }
 
-    const worldDateEl = document.getElementById('worldDate');
-    if (worldDateEl) {
-      worldDateEl.textContent = now.toLocaleDateString('en-US', {
-        timeZone: tz,
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
+    const dateString = now.toLocaleDateString('en-US', {
+      timeZone: tz,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    if (dateString !== lastWorldDateString) {
+      lastWorldDateString = dateString;
+      const worldDateEl = document.getElementById('worldDate');
+      if (worldDateEl) {
+        worldDateEl.textContent = dateString;
+      }
     }
 
     const worldOffsetEl = document.getElementById('worldOffset');
@@ -167,7 +198,7 @@ function updateWorldTime() {
 }
 
 updateWorldTime();
-setInterval(updateWorldTime, 250);
+setInterval(updateWorldTime, 200);
 
 // ---------------- ALARM ----------------
 let alarmTime = null; // Stored as "HH:MM" (24-hour format)
@@ -298,14 +329,14 @@ let lapCounter = 0;
 let lastLapMilliseconds = 0;
 
 function updateStopwatch() {
-  let ms = Math.floor(stopwatchMilliseconds % 1000);
   let totalSeconds = Math.floor(stopwatchMilliseconds / 1000);
   let hrs = Math.floor(totalSeconds / 3600);
   let mins = Math.floor((totalSeconds % 3600) / 60);
   let secs = totalSeconds % 60;
+  let hundredths = Math.floor((stopwatchMilliseconds % 1000) / 10);
   const display = document.getElementById('stopwatchDisplay');
   if (display) {
-    display.textContent = `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(ms, 3)}`;
+    display.textContent = `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(hundredths, 2)}`;
   }
 }
 
@@ -317,7 +348,7 @@ function startStopwatch() {
       stopwatchMilliseconds += (now - lastUpdate);
       lastUpdate = now;
       updateStopwatch();
-    }, 10);
+    }, 25);
     const startBtn = document.getElementById('startStopwatchBtn');
     if (startBtn) startBtn.textContent = 'Running...';
   }
@@ -337,7 +368,10 @@ function resetStopwatch() {
   stopwatchMilliseconds = 0;
   lapCounter = 0;
   lastLapMilliseconds = 0;
-  updateStopwatch();
+  const display = document.getElementById('stopwatchDisplay');
+  if (display) {
+    display.textContent = '00:00:00.00';
+  }
   const lapsContainer = document.getElementById('stopwatchLaps');
   if (lapsContainer) lapsContainer.innerHTML = '';
   const startBtn = document.getElementById('startStopwatchBtn');
@@ -354,8 +388,8 @@ function lapStopwatch() {
   const splitSecs = Math.floor(splitMs / 1000);
   const sMins = Math.floor(splitSecs / 60);
   const sSecs = splitSecs % 60;
-  const sMs = Math.floor(splitMs % 1000);
-  const splitDisplay = `+${pad(sMins)}:${pad(sSecs)}.${pad(sMs, 3)}`;
+  const sHundredths = Math.floor((splitMs % 1000) / 10);
+  const splitDisplay = `+${pad(sMins)}:${pad(sSecs)}.${pad(sHundredths, 2)}`;
 
   const lapEl = document.createElement('div');
   lapEl.className = 'lap-item';
@@ -374,24 +408,25 @@ function lapStopwatch() {
 let timerInterval = null;
 let timerRemainingMilliseconds = 5 * 60 * 1000;
 let isTimerPaused = false;
+let lastTimerDisplayString = '';
 
 function formatTimer(ms) {
   if (ms < 0) ms = 0;
-  let totalSeconds = Math.floor(ms / 1000);
+  let totalSeconds = Math.ceil(ms / 1000);
   let hrs = Math.floor(totalSeconds / 3600);
   let mins = Math.floor((totalSeconds % 3600) / 60);
   let secs = totalSeconds % 60;
-  let millis = Math.floor(ms % 1000);
-  if (hrs > 0) {
-    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}.${pad(millis, 3)}`;
-  }
-  return `${pad(mins)}:${pad(secs)}.${pad(millis, 3)}`;
+  return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
 }
 
 function updateTimerDisplay() {
   const display = document.getElementById('timerDisplay');
   if (display) {
-    display.textContent = formatTimer(timerRemainingMilliseconds);
+    const formatted = formatTimer(timerRemainingMilliseconds);
+    if (formatted !== lastTimerDisplayString) {
+      lastTimerDisplayString = formatted;
+      display.textContent = formatted;
+    }
   }
 }
 
@@ -413,6 +448,7 @@ function setTimerPreset(minutes) {
   if (secsEl) secsEl.value = 0;
 
   timerRemainingMilliseconds = minutes * 60 * 1000;
+  lastTimerDisplayString = '';
   updateTimerDisplay();
   const startBtn = document.getElementById('startTimerBtn');
   if (startBtn) startBtn.textContent = 'Start';
@@ -459,7 +495,7 @@ function startTimer() {
     } else {
       updateTimerDisplay();
     }
-  }, 10);
+  }, 100);
 }
 
 function stopTimer() {

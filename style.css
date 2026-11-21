@@ -107,8 +107,11 @@ body {
   font-weight: 500;
 }
 
-/* Digital Displays */
+/* Digital Displays - Tabular fixed-width font eliminates any vibration/jitter */
 .digital-display {
+  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
   font-size: clamp(2.2rem, 7.5vw, 5.5rem);
   font-weight: 700;
   color: #61dafb;
@@ -116,8 +119,10 @@ body {
   letter-spacing: 2px;
   line-height: 1.15;
   margin: 10px 0 15px;
-  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  text-align: center;
   word-break: normal;
+  white-space: nowrap;
 }
 
 .stopwatch-font {
