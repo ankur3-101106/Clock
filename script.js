@@ -1,4 +1,29 @@
-// Tab navigation
+// ---------------- LOCAL STORAGE HELPER ----------------
+const storage = {
+  get(key, defaultValue = null) {
+    try {
+      const val = localStorage.getItem(key);
+      return val ? JSON.parse(val) : defaultValue;
+    } catch (e) {
+      console.warn('Storage read error for', key, e);
+      return defaultValue;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+      console.warn('Storage write error for', key, e);
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {}
+  }
+};
+
+// ---------------- TAB NAVIGATION ----------------
 function showTab(id) {
   const tabs = document.querySelectorAll('.section');
   const buttons = document.querySelectorAll('.tab-button');
@@ -19,6 +44,8 @@ function showTab(id) {
     activeBtn.classList.add('active');
     activeBtn.setAttribute('aria-selected', 'true');
   }
+
+  storage.set('clock_active_tab', id);
 }
 
 // ---------------- AUDIO CHIME SYSTEM (Web Audio API) ----------------
@@ -112,7 +139,7 @@ function setFixedDigits(element, str) {
 }
 
 // ---------------- LOCAL TIME ----------------
-let is24HourFormat = false;
+let is24HourFormat = storage.get('clock_hour_format', false);
 let lastLocalTimeString = '';
 let lastLocalDateString = '';
 
@@ -149,6 +176,7 @@ function updateLocalTime() {
 
 function toggleHourFormat() {
   is24HourFormat = !is24HourFormat;
+  storage.set('clock_hour_format', is24HourFormat);
   const btn = document.getElementById('toggleFormatBtn');
   if (btn) {
     btn.textContent = is24HourFormat ? "Switch to 12-Hour Format (AM/PM)" : "Switch to 24-Hour Format";
@@ -159,14 +187,24 @@ function toggleHourFormat() {
   updateWorldTime();
 }
 
-// Immediately initialize local time
+// Update format button text on load
+const formatBtn = document.getElementById('toggleFormatBtn');
+if (formatBtn) {
+  formatBtn.textContent = is24HourFormat ? "Switch to 12-Hour Format (AM/PM)" : "Switch to 24-Hour Format";
+}
+
 updateLocalTime();
 setInterval(updateLocalTime, 200);
 
 // ---------------- WORLD TIME ----------------
 const timezoneSelect = document.getElementById('timezoneSelect');
 if (timezoneSelect) {
+  const savedWorldTz = storage.get('clock_world_tz');
+  if (savedWorldTz) {
+    timezoneSelect.value = savedWorldTz;
+  }
   timezoneSelect.addEventListener('change', () => {
+    storage.set('clock_world_tz', timezoneSelect.value);
     lastWorldTimeString = '';
     lastWorldDateString = '';
     updateWorldTime();
@@ -227,67 +265,157 @@ function updateWorldTime() {
 updateWorldTime();
 setInterval(updateWorldTime, 200);
 
-// ---------------- ALARM ----------------
-let alarmTime = null; // Stored as "HH:MM" (24-hour format)
+// ---------------- MULTIPLE ALARMS (PERSISTED) ----------------
+let alarms = storage.get('clock_alarms', []);
 let isAlarmRinging = false;
 let activeModalType = null; // 'alarm' or 'timer'
-let lastAlarmMinuteTriggered = null;
+let currentlyRingingAlarm = null;
+const lastTriggeredAlarms = new Set(); // Prevent re-triggering during the same minute
 
-function setAlarm() {
-  const alarmInput = document.getElementById('alarmTime');
-  const val = alarmInput ? alarmInput.value : '';
+function format12Hour(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${pad(h12)}:${pad(m)} ${period}`;
+}
+
+function updateAlarmStatus() {
   const statusEl = document.getElementById('alarmStatus');
+  if (!statusEl) return;
+
+  const activeAlarms = alarms.filter(a => a.enabled);
+  if (alarms.length === 0) {
+    statusEl.textContent = 'No alarms configured';
+    statusEl.className = 'status-msg';
+  } else if (activeAlarms.length === 0) {
+    statusEl.textContent = `${alarms.length} alarm(s) set (all disabled)`;
+    statusEl.className = 'status-msg';
+  } else {
+    statusEl.textContent = `${activeAlarms.length} active alarm(s) running`;
+    statusEl.className = 'status-msg active';
+  }
+}
+
+function renderAlarmsList() {
+  const container = document.getElementById('alarmsList');
+  if (!container) return;
+
+  if (alarms.length === 0) {
+    container.innerHTML = '<div style="color: #8b949e; font-size: 0.9rem; padding: 10px 0;">No alarms added yet. Set a time above to add one.</div>';
+    return;
+  }
+
+  container.innerHTML = alarms.map(alarm => {
+    const formatted12 = format12Hour(alarm.time);
+    const activeClass = alarm.enabled ? 'active' : 'inactive';
+    const statusText = alarm.enabled ? 'Active' : 'Off';
+    const itemDisabledClass = alarm.enabled ? '' : 'disabled';
+
+    return `
+      <div class="alarm-item ${itemDisabledClass}" data-id="${alarm.id}">
+        <div class="alarm-info">
+          <div class="alarm-time-text">${formatted12}</div>
+          <div class="alarm-label-text">${escapeHtml(alarm.label)} &bull; ${alarm.time}</div>
+        </div>
+        <div class="alarm-actions">
+          <button class="alarm-toggle ${activeClass}" onclick="toggleAlarm('${alarm.id}')" title="Toggle Alarm">
+            ${statusText}
+          </button>
+          <button class="btn-delete" onclick="deleteAlarm('${alarm.id}')" title="Delete Alarm">
+            &#10005;
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function saveAlarms() {
+  storage.set('clock_alarms', alarms);
+  renderAlarmsList();
+  updateAlarmStatus();
+}
+
+function addAlarm() {
+  const timeInput = document.getElementById('alarmTime');
+  const labelInput = document.getElementById('alarmLabel');
+  const val = timeInput ? timeInput.value : '';
+  const label = labelInput ? labelInput.value.trim() : '';
 
   if (!val) {
+    const statusEl = document.getElementById('alarmStatus');
     if (statusEl) {
-      statusEl.textContent = 'Please select a valid time first!';
+      statusEl.textContent = 'Please choose a time for the alarm!';
       statusEl.className = 'status-msg warning';
     }
     return;
   }
 
-  alarmTime = val;
-  lastAlarmMinuteTriggered = null;
+  const newAlarm = {
+    id: 'alarm_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+    time: val,
+    label: label || `Alarm ${alarms.length + 1}`,
+    enabled: true
+  };
 
-  const [h, m] = val.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  const formatted12 = `${pad(h12)}:${pad(m)} ${period}`;
+  alarms.push(newAlarm);
+  saveAlarms();
 
-  if (statusEl) {
-    statusEl.textContent = `Alarm set for ${formatted12} (${val})`;
-    statusEl.className = 'status-msg active';
+  if (timeInput) timeInput.value = '';
+  if (labelInput) labelInput.value = '';
+  getAudioContext();
+}
+
+function setAlarm() {
+  addAlarm();
+}
+
+function toggleAlarm(id) {
+  const alarm = alarms.find(a => String(a.id) === String(id));
+  if (alarm) {
+    alarm.enabled = !alarm.enabled;
+    saveAlarms();
   }
+}
 
-  getAudioContext(); // Initialize audio on user interaction
+function deleteAlarm(id) {
+  alarms = alarms.filter(a => String(a.id) !== String(id));
+  saveAlarms();
+}
+
+function clearAllAlarms() {
+  if (alarms.length === 0) return;
+  alarms = [];
+  saveAlarms();
 }
 
 function clearAlarm() {
-  alarmTime = null;
-  lastAlarmMinuteTriggered = null;
-  const alarmInput = document.getElementById('alarmTime');
-  if (alarmInput) alarmInput.value = '';
-  const statusEl = document.getElementById('alarmStatus');
-  if (statusEl) {
-    statusEl.textContent = 'No alarm set';
-    statusEl.className = 'status-msg';
-  }
+  clearAllAlarms();
 }
 
+// Alarm check loop (every 1000ms)
 setInterval(() => {
-  if (alarmTime && !isAlarmRinging) {
-    const now = new Date();
-    const currentHHMM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    if (currentHHMM === alarmTime && lastAlarmMinuteTriggered !== currentHHMM) {
-      lastAlarmMinuteTriggered = currentHHMM;
-      triggerAlarm();
+  if (alarms.length === 0 || isAlarmRinging) return;
+  const now = new Date();
+  const currentHHMM = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const minuteKey = `${currentHHMM}_${now.toDateString()}`;
+
+  for (const alarm of alarms) {
+    if (alarm.enabled && alarm.time === currentHHMM) {
+      const triggerKey = `${alarm.id}_${minuteKey}`;
+      if (!lastTriggeredAlarms.has(triggerKey)) {
+        lastTriggeredAlarms.add(triggerKey);
+        triggerAlarm(alarm);
+        break;
+      }
     }
   }
 }, 1000);
 
-function triggerAlarm() {
+function triggerAlarm(alarm) {
   isAlarmRinging = true;
   activeModalType = 'alarm';
+  currentlyRingingAlarm = alarm;
   startAlarmSound();
 
   const modal = document.getElementById('alarmModal');
@@ -296,13 +424,14 @@ function triggerAlarm() {
   const snoozeBtn = document.getElementById('snoozeAlertBtn');
 
   if (title) title.textContent = 'ALARM RINGING!';
-  if (msg) msg.textContent = `Alarm for ${alarmTime} is going off!`;
+  const formattedTime = format12Hour(alarm.time);
+  if (msg) msg.textContent = `${alarm.label} (${formattedTime}) is ringing!`;
   if (snoozeBtn) snoozeBtn.style.display = 'inline-block';
   if (modal) modal.classList.remove('hidden');
 
   const statusEl = document.getElementById('alarmStatus');
   if (statusEl) {
-    statusEl.textContent = '🔔 Alarm is ringing!';
+    statusEl.textContent = `🔔 Alarm "${alarm.label}" is ringing!`;
     statusEl.className = 'status-msg triggered';
   }
 }
@@ -315,22 +444,17 @@ function snoozeAlarm() {
 
   const now = new Date();
   now.setMinutes(now.getMinutes() + 5);
-  alarmTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  lastAlarmMinuteTriggered = null;
+  const snoozeTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-  const alarmInput = document.getElementById('alarmTime');
-  if (alarmInput) alarmInput.value = alarmTime;
-
-  const h = now.getHours();
-  const m = now.getMinutes();
-  const period = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-
-  const statusEl = document.getElementById('alarmStatus');
-  if (statusEl) {
-    statusEl.textContent = `Snoozed! Next alarm at ${pad(h12)}:${pad(m)} ${period}`;
-    statusEl.className = 'status-msg active';
-  }
+  const snoozedAlarm = {
+    id: Date.now(),
+    time: snoozeTime,
+    label: currentlyRingingAlarm ? `Snooze: ${currentlyRingingAlarm.label}` : 'Snoozed Alarm',
+    enabled: true,
+    isSnooze: true
+  };
+  alarms.push(snoozedAlarm);
+  saveAlarms();
 }
 
 function dismissRinging() {
@@ -340,20 +464,70 @@ function dismissRinging() {
   if (modal) modal.classList.add('hidden');
 
   if (activeModalType === 'alarm') {
-    alarmTime = null;
-    const statusEl = document.getElementById('alarmStatus');
-    if (statusEl) {
-      statusEl.textContent = 'Alarm dismissed';
-      statusEl.className = 'status-msg';
+    if (currentlyRingingAlarm && currentlyRingingAlarm.isSnooze) {
+      deleteAlarm(currentlyRingingAlarm.id);
     }
+    currentlyRingingAlarm = null;
+    updateAlarmStatus();
   }
 }
 
-// ---------------- STOPWATCH ----------------
+// ---------------- STOPWATCH (PERSISTED) ----------------
 let stopwatchMilliseconds = 0;
 let stopwatchInterval = null;
 let lapCounter = 0;
 let lastLapMilliseconds = 0;
+let stopwatchWallStartTime = null;
+let stopwatchAccumulatedMs = 0;
+let stopwatchLapsData = [];
+
+function saveStopwatchState() {
+  const isRunning = stopwatchInterval !== null;
+  storage.set('clock_stopwatch', {
+    isRunning,
+    stopwatchWallStartTime,
+    stopwatchAccumulatedMs: stopwatchMilliseconds,
+    laps: stopwatchLapsData,
+    lapCounter,
+    lastLapMilliseconds
+  });
+}
+
+function restoreStopwatchState() {
+  const saved = storage.get('clock_stopwatch');
+  if (!saved) return;
+
+  stopwatchLapsData = saved.laps || [];
+  lapCounter = saved.lapCounter || 0;
+  lastLapMilliseconds = saved.lastLapMilliseconds || 0;
+
+  const container = document.getElementById('stopwatchLaps');
+  if (container) {
+    container.innerHTML = '';
+    for (const lap of stopwatchLapsData) {
+      const lapEl = document.createElement('div');
+      lapEl.className = 'lap-item';
+      lapEl.innerHTML = `
+        <span class="lap-number">Lap ${lap.number}</span>
+        <span class="lap-split">${lap.split}</span>
+        <span class="lap-total">${lap.total}</span>
+      `;
+      container.appendChild(lapEl);
+    }
+  }
+
+  if (saved.isRunning && saved.stopwatchWallStartTime) {
+    const elapsedSince = Date.now() - saved.stopwatchWallStartTime;
+    stopwatchMilliseconds = (saved.stopwatchAccumulatedMs || 0) + elapsedSince;
+    updateStopwatch();
+    startStopwatch();
+  } else if (saved.stopwatchAccumulatedMs > 0) {
+    stopwatchMilliseconds = saved.stopwatchAccumulatedMs;
+    updateStopwatch();
+    const startBtn = document.getElementById('startStopwatchBtn');
+    if (startBtn) startBtn.textContent = 'Resume';
+  }
+}
 
 function updateStopwatch() {
   let totalSeconds = Math.floor(stopwatchMilliseconds / 1000);
@@ -371,14 +545,19 @@ function updateStopwatch() {
 function startStopwatch() {
   if (!stopwatchInterval) {
     let lastUpdate = performance.now();
+    stopwatchWallStartTime = Date.now();
+    stopwatchAccumulatedMs = stopwatchMilliseconds;
+
     stopwatchInterval = setInterval(() => {
       let now = performance.now();
       stopwatchMilliseconds += (now - lastUpdate);
       lastUpdate = now;
       updateStopwatch();
     }, 10);
+
     const startBtn = document.getElementById('startStopwatchBtn');
     if (startBtn) startBtn.textContent = 'Running...';
+    saveStopwatchState();
   }
 }
 
@@ -388,6 +567,7 @@ function stopStopwatch() {
     stopwatchInterval = null;
     const startBtn = document.getElementById('startStopwatchBtn');
     if (startBtn) startBtn.textContent = 'Resume';
+    saveStopwatchState();
   }
 }
 
@@ -396,6 +576,9 @@ function resetStopwatch() {
   stopwatchMilliseconds = 0;
   lapCounter = 0;
   lastLapMilliseconds = 0;
+  stopwatchWallStartTime = null;
+  stopwatchAccumulatedMs = 0;
+  stopwatchLapsData = [];
   const display = document.getElementById('stopwatchDisplay');
   if (display) {
     setFixedDigits(display, '00:00:00.000');
@@ -404,6 +587,7 @@ function resetStopwatch() {
   if (lapsContainer) lapsContainer.innerHTML = '';
   const startBtn = document.getElementById('startStopwatchBtn');
   if (startBtn) startBtn.textContent = 'Start';
+  saveStopwatchState();
 }
 
 function lapStopwatch() {
@@ -419,6 +603,12 @@ function lapStopwatch() {
   const sMs = Math.floor(splitMs % 1000);
   const splitDisplay = `+${pad(sMins)}:${pad(sSecs)}.${pad(sMs, 3)}`;
 
+  stopwatchLapsData.unshift({
+    number: lapCounter,
+    split: splitDisplay,
+    total: currentTotal
+  });
+
   const lapEl = document.createElement('div');
   lapEl.className = 'lap-item';
   lapEl.innerHTML = `
@@ -430,13 +620,67 @@ function lapStopwatch() {
   if (container) {
     container.insertBefore(lapEl, container.firstChild);
   }
+  saveStopwatchState();
 }
 
-// ---------------- TIMER ----------------
+// ---------------- TIMER (PERSISTED) ----------------
 let timerInterval = null;
 let timerRemainingMilliseconds = 5 * 60 * 1000;
+let timerInitialMilliseconds = 5 * 60 * 1000;
 let isTimerPaused = false;
 let lastTimerDisplayString = '';
+let timerTargetEndTime = null;
+
+function saveTimerState() {
+  const isRunning = timerInterval !== null;
+  const hrs = parseInt(document.getElementById('timerHours')?.value || '0', 10) || 0;
+  const mins = parseInt(document.getElementById('timerMinutes')?.value || '5', 10) || 0;
+  const secs = parseInt(document.getElementById('timerSeconds')?.value || '0', 10) || 0;
+
+  storage.set('clock_timer', {
+    isRunning,
+    isTimerPaused,
+    timerRemainingMilliseconds,
+    timerInitialMilliseconds,
+    timerTargetEndTime,
+    hours: hrs,
+    minutes: mins,
+    seconds: secs
+  });
+}
+
+function restoreTimerState() {
+  const saved = storage.get('clock_timer');
+  if (!saved) return;
+
+  if (document.getElementById('timerHours')) document.getElementById('timerHours').value = saved.hours ?? 0;
+  if (document.getElementById('timerMinutes')) document.getElementById('timerMinutes').value = saved.minutes ?? 5;
+  if (document.getElementById('timerSeconds')) document.getElementById('timerSeconds').value = saved.seconds ?? 0;
+
+  timerInitialMilliseconds = saved.timerInitialMilliseconds || 5 * 60 * 1000;
+
+  if (saved.isRunning && saved.timerTargetEndTime) {
+    const remaining = saved.timerTargetEndTime - Date.now();
+    if (remaining <= 0) {
+      timerRemainingMilliseconds = 0;
+      updateTimerDisplay();
+      triggerTimerDone();
+    } else {
+      timerRemainingMilliseconds = remaining;
+      updateTimerDisplay();
+      startTimer();
+    }
+  } else if (saved.isTimerPaused && saved.timerRemainingMilliseconds > 0) {
+    timerRemainingMilliseconds = saved.timerRemainingMilliseconds;
+    isTimerPaused = true;
+    updateTimerDisplay();
+    const startBtn = document.getElementById('startTimerBtn');
+    if (startBtn) startBtn.textContent = 'Resume';
+  } else if (saved.timerRemainingMilliseconds > 0) {
+    timerRemainingMilliseconds = saved.timerRemainingMilliseconds;
+    updateTimerDisplay();
+  }
+}
 
 function formatTimer(ms) {
   if (ms < 0) ms = 0;
@@ -469,6 +713,7 @@ function getTimerInputMilliseconds() {
 function setTimerPreset(minutes) {
   stopTimer();
   isTimerPaused = false;
+  timerTargetEndTime = null;
   const hrsEl = document.getElementById('timerHours');
   const minsEl = document.getElementById('timerMinutes');
   const secsEl = document.getElementById('timerSeconds');
@@ -477,10 +722,12 @@ function setTimerPreset(minutes) {
   if (secsEl) secsEl.value = 0;
 
   timerRemainingMilliseconds = minutes * 60 * 1000;
+  timerInitialMilliseconds = timerRemainingMilliseconds;
   lastTimerDisplayString = '';
   updateTimerDisplay();
   const startBtn = document.getElementById('startTimerBtn');
   if (startBtn) startBtn.textContent = 'Start';
+  saveTimerState();
 }
 
 function startTimer() {
@@ -497,9 +744,11 @@ function startTimer() {
       return;
     }
     timerRemainingMilliseconds = totalMs;
+    timerInitialMilliseconds = totalMs;
     isTimerPaused = false;
   }
 
+  timerTargetEndTime = Date.now() + timerRemainingMilliseconds;
   updateTimerDisplay();
   clearInterval(timerInterval);
 
@@ -518,13 +767,17 @@ function startTimer() {
       timerInterval = null;
       timerRemainingMilliseconds = 0;
       isTimerPaused = false;
+      timerTargetEndTime = null;
       updateTimerDisplay();
       if (startBtn) startBtn.textContent = 'Start';
+      saveTimerState();
       triggerTimerDone();
     } else {
       updateTimerDisplay();
     }
   }, 10);
+
+  saveTimerState();
 }
 
 function stopTimer() {
@@ -532,19 +785,25 @@ function stopTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
     isTimerPaused = true;
+    timerTargetEndTime = null;
     const startBtn = document.getElementById('startTimerBtn');
     if (startBtn) startBtn.textContent = 'Resume';
+    saveTimerState();
   }
 }
 
 function resetTimer() {
   stopTimer();
   isTimerPaused = false;
+  timerTargetEndTime = null;
   const inputMs = getTimerInputMilliseconds();
   timerRemainingMilliseconds = inputMs > 0 ? inputMs : 5 * 60 * 1000;
+  timerInitialMilliseconds = timerRemainingMilliseconds;
+  lastTimerDisplayString = '';
   updateTimerDisplay();
   const startBtn = document.getElementById('startTimerBtn');
   if (startBtn) startBtn.textContent = 'Start';
+  saveTimerState();
 }
 
 function lapTimer() {
@@ -577,6 +836,31 @@ function pad(num, size = 2) {
   return Math.floor(Math.abs(num)).toString().padStart(size, '0');
 }
 
-// Initial setups
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  })[m]);
+}
+
+// Window unload listeners to ensure latest state is saved
+window.addEventListener('beforeunload', () => {
+  saveStopwatchState();
+  saveTimerState();
+});
+
+// ---------------- INITIAL SETUPS ----------------
+renderAlarmsList();
+updateAlarmStatus();
+restoreStopwatchState();
+restoreTimerState();
 updateStopwatch();
 updateTimerDisplay();
+
+// Restore active tab
+const savedTab = storage.get('clock_active_tab', 'local');
+showTab(savedTab);

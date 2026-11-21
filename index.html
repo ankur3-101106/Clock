@@ -69,16 +69,23 @@
     <div id="alarm" class="section" role="tabpanel">
       <div class="clock-card">
         <h2>Alarm</h2>
-        <div class="alarm-input-group">
-          <label for="alarmTime">Set Alarm Time:</label>
-          <input type="time" id="alarmTime" />
+        <div class="alarm-controls">
+          <div class="alarm-input-group">
+            <label for="alarmTime">Alarm Time:</label>
+            <input type="time" id="alarmTime" />
+          </div>
+          <div class="alarm-input-group">
+            <label for="alarmLabel">Label (optional):</label>
+            <input type="text" id="alarmLabel" placeholder="e.g. Work, Wake Up" maxlength="25" />
+          </div>
         </div>
         <div class="button-group">
-          <button id="setAlarm" class="btn btn-primary stop" onclick="setAlarm()">Set Alarm</button>
-          <button id="clearAlarm" class="btn btn-danger stop" onclick="clearAlarm()">Cancel Alarm</button>
+          <button id="setAlarm" class="btn btn-primary stop" onclick="setAlarm()">+ Add Alarm</button>
+          <button id="clearAlarm" class="btn btn-danger stop" onclick="clearAlarm()">Clear All</button>
           <button id="testAlarmSound" class="btn btn-secondary stop" onclick="testSound()">Test Sound</button>
         </div>
-        <div id="alarmStatus" class="status-msg">No alarm set</div>
+        <div id="alarmStatus" class="status-msg">No alarms configured</div>
+        <div id="alarmsList" class="alarms-list"></div>
       </div>
     </div>
 

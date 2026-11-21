@@ -172,7 +172,7 @@ body {
 }
 
 /* Inputs and Selects */
-.select-wrapper, .alarm-input-group {
+.select-wrapper {
   margin-bottom: 20px;
   display: flex;
   flex-direction: column;
@@ -180,12 +180,28 @@ body {
   gap: 8px;
 }
 
+.alarm-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.alarm-input-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
 .select-wrapper label, .alarm-input-group label {
   font-size: 0.95rem;
   color: #8b949e;
 }
 
-select, input[type="time"], input[type="number"] {
+select, input[type="time"], input[type="number"], input[type="text"] {
   background: #0d1117;
   color: #f0f6fc;
   border: 1px solid #30363d;
@@ -198,7 +214,11 @@ select, input[type="time"], input[type="number"] {
   text-align: center;
 }
 
-select:focus, input[type="time"]:focus, input[type="number"]:focus {
+input[type="text"] {
+  max-width: 220px;
+}
+
+select:focus, input[type="time"]:focus, input[type="number"]:focus, input[type="text"]:focus {
   border-color: #61dafb;
   box-shadow: 0 0 10px rgba(97, 218, 251, 0.3);
 }
@@ -406,6 +426,112 @@ select option {
 .lap-item .lap-total {
   color: #f0f6fc;
   font-weight: 600;
+}
+
+/* Multiple Alarms List */
+.alarms-list {
+  max-width: 550px;
+  width: 100%;
+  margin: 25px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.alarms-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.alarms-list::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
+
+.alarm-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.25s ease;
+}
+
+.alarm-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(97, 218, 251, 0.3);
+}
+
+.alarm-item.disabled {
+  opacity: 0.55;
+  filter: grayscale(0.5);
+}
+
+.alarm-info {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.alarm-time-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #61dafb;
+  letter-spacing: 1px;
+}
+
+.alarm-label-text {
+  font-size: 0.85rem;
+  color: #8b949e;
+}
+
+.alarm-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alarm-toggle {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.alarm-toggle.active {
+  background: #238636;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(35, 134, 54, 0.4);
+}
+
+.alarm-toggle.inactive {
+  background: #30363d;
+  color: #8b949e;
+}
+
+.btn-delete {
+  background: transparent;
+  color: #ff5252;
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-delete:hover {
+  background: rgba(255, 82, 82, 0.15);
+  border-color: #ff5252;
 }
 
 /* Modal Alert for Alarm & Timer */
