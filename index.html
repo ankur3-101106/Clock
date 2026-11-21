@@ -3,71 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Clock App</title>
+  <title>Digital Clock App</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Clock App</h1>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>CLOCK APP</h1>
+    </header>
 
-  <div class="tabs">
-    <button class="tab-button active" onclick="showTab('local')">Local Time</button>
-    <button class="tab-button" onclick="showTab('world')">World Time</button>
-    <button class="tab-button" onclick="showTab('alarm')">Alarm</button>
-    <button class="tab-button" onclick="showTab('stopwatch')">Stopwatch</button>
-    <button class="tab-button" onclick="showTab('timer')">Timer</button>
-  </div>
-
-  <div id="local" class="section active">
-    <h2>Local Time</h2>
-    <div id="localTime"></div>
-  </div>
-
-  <div id="world" class="section">
-    <h2>World Time</h2>
-    <select id="timezoneSelect">
-      <option value="UTC">UTC</option>
-      <option value="America/New_York">New York</option>
-      <option value="Europe/London">London</option>
-      <option value="Asia/Tokyo">Tokyo</option>
-      <option value="Asia/Kolkata">Kolkata</option>
-    </select>
-    <div id="worldTime"></div>
-  </div>
-
-  <div id="alarm" class="section">
-    <h2>Alarm</h2>
-    <input type="time" id="alarmTime" />
-    <button id="setAlarm" onclick="setAlarm()">Set Alarm</button>
-    <div id="alarmStatus"></div>
-  </div>
-
-  <div id="stopwatch" class="section">
-    <h2>Stopwatch</h2>
-    <div id="stopwatchDisplay">00:00:00.000</div>
-    <div class="button-group">
-      <button class='stop' onclick="startStopwatch()">Start</button>
-      <button class='stop' onclick="stopStopwatch()">Stop</button>
-      <button class='stop' onclick="resetStopwatch()">Reset</button>
-      <button class='stop' onclick="lapStopwatch()">Lap</button>
+    <div class="tabs" role="tablist">
+      <button class="tab-button active" role="tab" aria-selected="true" data-tab="local" onclick="showTab('local')">Local Time</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="world" onclick="showTab('world')">World Time</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="alarm" onclick="showTab('alarm')">Alarm</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="stopwatch" onclick="showTab('stopwatch')">Stopwatch</button>
+      <button class="tab-button" role="tab" aria-selected="false" data-tab="timer" onclick="showTab('timer')">Timer</button>
     </div>
-    <div id="stopwatchLaps" class="laps"></div>
+
+    <!-- Local Time Section -->
+    <div id="local" class="section active" role="tabpanel">
+      <div class="clock-card">
+        <h2>Local Time</h2>
+        <div id="localTime" class="digital-display">--:--:--</div>
+        <div id="localDate" class="date-display">--------</div>
+        <div class="controls-row">
+          <button id="toggleFormatBtn" class="btn btn-secondary stop" onclick="toggleHourFormat()">Switch to 24-Hour Format</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- World Time Section -->
+    <div id="world" class="section" role="tabpanel">
+      <div class="clock-card">
+        <h2>World Time</h2>
+        <div class="select-wrapper">
+          <label for="timezoneSelect">Select City / Timezone:</label>
+          <select id="timezoneSelect">
+            <option value="UTC">UTC (Coordinated Universal Time)</option>
+            <option value="America/New_York">New York, USA</option>
+            <option value="America/Chicago">Chicago, USA</option>
+            <option value="America/Los_Angeles">Los Angeles, USA</option>
+            <option value="America/Sao_Paulo">São Paulo, Brazil</option>
+            <option value="Europe/London">London, UK</option>
+            <option value="Europe/Paris">Paris, France</option>
+            <option value="Europe/Berlin">Berlin, Germany</option>
+            <option value="Africa/Cairo">Cairo, Egypt</option>
+            <option value="Asia/Dubai">Dubai, UAE</option>
+            <option value="Asia/Kolkata" selected>Kolkata, India</option>
+            <option value="Asia/Singapore">Singapore</option>
+            <option value="Asia/Tokyo">Tokyo, Japan</option>
+            <option value="Australia/Sydney">Sydney, Australia</option>
+            <option value="Pacific/Auckland">Auckland, New Zealand</option>
+          </select>
+        </div>
+        <div id="worldTime" class="digital-display">--:--:--</div>
+        <div id="worldDate" class="date-display">--------</div>
+        <div id="worldOffset" class="sub-display"></div>
+      </div>
+    </div>
+
+    <!-- Alarm Section -->
+    <div id="alarm" class="section" role="tabpanel">
+      <div class="clock-card">
+        <h2>Alarm</h2>
+        <div class="alarm-input-group">
+          <label for="alarmTime">Set Alarm Time:</label>
+          <input type="time" id="alarmTime" />
+        </div>
+        <div class="button-group">
+          <button id="setAlarm" class="btn btn-primary stop" onclick="setAlarm()">Set Alarm</button>
+          <button id="clearAlarm" class="btn btn-danger stop" onclick="clearAlarm()">Cancel Alarm</button>
+          <button id="testAlarmSound" class="btn btn-secondary stop" onclick="testSound()">Test Sound</button>
+        </div>
+        <div id="alarmStatus" class="status-msg">No alarm set</div>
+      </div>
+    </div>
+
+    <!-- Stopwatch Section -->
+    <div id="stopwatch" class="section" role="tabpanel">
+      <div class="clock-card">
+        <h2>Stopwatch</h2>
+        <div id="stopwatchDisplay" class="digital-display stopwatch-font">00:00:00.000</div>
+        <div class="button-group">
+          <button id="startStopwatchBtn" class="btn btn-primary stop" onclick="startStopwatch()">Start</button>
+          <button id="stopStopwatchBtn" class="btn btn-danger stop" onclick="stopStopwatch()">Stop</button>
+          <button id="lapStopwatchBtn" class="btn btn-secondary stop" onclick="lapStopwatch()">Lap</button>
+          <button id="resetStopwatchBtn" class="btn btn-secondary stop" onclick="resetStopwatch()">Reset</button>
+        </div>
+        <div id="stopwatchLaps" class="laps"></div>
+      </div>
+    </div>
+
+    <!-- Timer Section -->
+    <div id="timer" class="section" role="tabpanel">
+      <div class="clock-card">
+        <h2>Timer</h2>
+        <div class="timer-inputs">
+          <div class="input-block">
+            <label for="timerHours">Hours</label>
+            <input type="number" id="timerHours" min="0" max="99" value="0" placeholder="0" />
+          </div>
+          <span class="colon">:</span>
+          <div class="input-block">
+            <label for="timerMinutes">Minutes</label>
+            <input type="number" id="timerMinutes" min="0" max="59" value="5" placeholder="5" />
+          </div>
+          <span class="colon">:</span>
+          <div class="input-block">
+            <label for="timerSeconds">Seconds</label>
+            <input type="number" id="timerSeconds" min="0" max="59" value="0" placeholder="0" />
+          </div>
+        </div>
+        <div class="quick-presets">
+          <span>Presets:</span>
+          <button class="btn btn-preset" onclick="setTimerPreset(1)">+1m</button>
+          <button class="btn btn-preset" onclick="setTimerPreset(5)">+5m</button>
+          <button class="btn btn-preset" onclick="setTimerPreset(10)">+10m</button>
+          <button class="btn btn-preset" onclick="setTimerPreset(25)">+25m</button>
+        </div>
+        <div id="timerDisplay" class="digital-display stopwatch-font">00:05:00.000</div>
+        <div class="button-group">
+          <button id="startTimerBtn" class="btn btn-primary stop" onclick="startTimer()">Start</button>
+          <button id="stopTimerBtn" class="btn btn-danger stop" onclick="stopTimer()">Pause</button>
+          <button id="resetTimerBtn" class="btn btn-secondary stop" onclick="resetTimer()">Reset</button>
+          <button class="btn btn-secondary stop" onclick="lapTimer()" style="display:none;">Lap</button>
+        </div>
+        <div id="timerLaps" class="laps" style="display:none;"></div>
+      </div>
+    </div>
   </div>
 
-  <div id="timer" class="section">
-    <h2>Timer</h2>
-    <input type="number" id="timerMinutes" placeholder="Minutes" />
-    <div class="button-group">
-      <button class='stop' onclick="startTimer()">Start Timer</button>
-      <button class='stop' onclick="stopTimer()">Stop Timer</button>
-      <button class='stop' onclick="resetTimer()">Reset Timer</button>
-      <button class='stop' onclick="lapTimer()">Lap</button>
+  <!-- Alarm / Timer Alert Modal -->
+  <div id="alarmModal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-icon">&#128276;</div>
+      <h3 id="modalTitle">ALARM RINGING!</h3>
+      <p id="modalMessage">Your alarm is going off!</p>
+      <div class="modal-actions">
+        <button id="dismissAlertBtn" class="btn btn-danger stop" onclick="dismissRinging()">Dismiss</button>
+        <button id="snoozeAlertBtn" class="btn btn-secondary stop" onclick="snoozeAlarm()">Snooze 5 Min</button>
+      </div>
     </div>
-    <div id="timerDisplay">00:00.000</div>
-    <div id="timerLaps" class="laps"></div>
   </div>
-<script src="script.js"></script>
+
+  <script src="script.js"></script>
 </body>
 </html>
