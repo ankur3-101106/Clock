@@ -107,22 +107,46 @@ body {
   font-weight: 500;
 }
 
-/* Digital Displays - Tabular fixed-width font eliminates any vibration/jitter */
+/* Digital Displays - Orbitron with fixed-space character slots */
 .digital-display {
-  font-family: 'Share Tech Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'Courier New', monospace;
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1;
+  font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: clamp(2.2rem, 7.5vw, 5.5rem);
   font-weight: 700;
   color: #61dafb;
   text-shadow: 0 0 20px rgba(97, 218, 251, 0.5);
-  letter-spacing: 2px;
   line-height: 1.15;
   margin: 10px 0 15px;
-  display: inline-block;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   word-break: normal;
   white-space: nowrap;
+}
+
+/* Individual character slots rendered in fixed space */
+.time-char {
+  display: inline-block;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.time-digit {
+  width: 0.66em;
+}
+
+.time-sep {
+  width: 0.32em;
+}
+
+.time-space {
+  width: 0.35em;
+  white-space: pre;
+}
+
+.time-letter {
+  width: 0.72em;
 }
 
 .stopwatch-font {
